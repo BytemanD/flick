@@ -3,6 +3,7 @@ import sys
 import argparse
 import logging
 
+from urllib import parse
 import flask
 import webview
 from loguru import logger
@@ -74,6 +75,35 @@ def get_package_versions(name):
     except Exception as e:
         logger.error(f"Failed to install package {name}: {e}")
         return flask.jsonify({"error": str(e)}), 500
+
+
+@app.route('/pip/repos')
+def get_repos():
+    return flask.jsonify({"repos": pip.PIP_REPOS})
+
+
+@app.route('/pip/config')
+def get_pip_config():
+    return flask.jsonify({"config": pip.SERVICE.config_list()})
+
+
+@app.route('/pip/config', methods=['POST'])
+def set_pip_config():
+    if not flask.request.json:
+        return flask.jsonify({"success": False, "error": "body is required"}), 400
+
+    key = flask.request.json.get("key")
+    value = flask.request.json.get("value")
+    if not key or not key:
+        return flask.jsonify({"success": False, "error": "key and value is required"}), 400
+
+    logger.debug("set pip config {} = {}", key, value)
+    pip.SERVICE.config_set(key, value)
+    if key == 'global.index-url':
+        result = parse.urlparse(value)
+        pip.SERVICE.config_set('global.trusted-host', result.hostname)
+
+    return {}
 
 
 def main():

@@ -8,6 +8,13 @@ import requests
 from flick.common.utils import timed_lru_cache
 from flick.core import executor
 
+PIP_REPOS = {
+    "官方": "https://pypi.org/simple",
+    "清华大学": "https://pypi.tuna.tsinghua.edu.cn/simple",
+    "中国科技大学": "https://pypi.mirrors.ustc.edu.cn/simple",
+    "阿里云": "https://mirrors.aliyun.com/pypi/simple",
+    "腾讯": "http://mirrors.cloud.tencent.com/pypi/simple",
+}
 
 @dataclasses.dataclass
 class PyPackage:
