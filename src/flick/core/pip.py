@@ -67,10 +67,17 @@ class PythonManager:
 
     def list_packages(self, name=None) -> List[PyPackage]:
         logger.info('list packages with name={}', name)
+        
+        def _get_metadata(dist):
+            try:
+                return dist.metadata.as_string()
+            except Exception as e:
+                logger.error('get metadata string faield: {}', e)
+                return "查询失败"
         return [
             PyPackage(name=dist.metadata['Name'], version=dist.metadata['Version'],
                       sumary=dist.metadata['Summary'],
-                      metadata=dist.metadata.as_string())
+                      metadata=_get_metadata(dist))
             for dist in metadata.distributions() if (not name or dist.metadata['Name'] == name)
         ]
 
