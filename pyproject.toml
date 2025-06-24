@@ -5,10 +5,47 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.9"
 dependencies = [
+    "docker>=7.1.0",
     "flask>=3.1.1",
     "flask-cors>=6.0.1",
     "importlib>=1.0.4",
     "loguru>=0.7.3",
+    "pip>=25.1.1",
     "pywebview>=5.4",
     "requests>=2.32.4",
 ]
+
+[dependency-groups]
+dev = [
+    "autoflake>=2.3.1",
+    "black>=25.1.0",
+    "isort>=6.0.1",
+    "pylint>=3.3.7",
+]
+
+[project.scripts]
+flick = "flick.cmd.cli:main"
+
+[tool.pylint.messages_control]
+disable = ["missing-docstring",
+           "too-many-instance-attributes", "too-few-public-methods",
+           "inconsistent-return-statements",
+           "too-many-arguments", "too-many-positional-arguments"]
+
+[tool.black]
+line-length = 100
+
+[tool.pylint]
+# 启用彩色输出
+output-format = "colorized"
+
+[tool.pylint.format]
+# 强制使用 LF 换行符（Unix 风格）
+expected-line-ending-format = "LF"
+
+[tool.uv.sources]
+torch = { index = "tsinghua" }
+
+[[tool.uv.index]]
+name = "tsinghua"
+url = "https://pypi.tuna.tsinghua.edu.cn/simple"

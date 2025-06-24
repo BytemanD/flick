@@ -2,7 +2,9 @@ import sys
 
 from loguru import logger
 
-LOG_FORMAT_DEFAULT = "<level>{time:YYYY-MM-DD HH:mm:ss} {level: <7} {name} {message}</level>"
+LOG_FORMAT_DEFAULT = (
+    "<level>{time:YYYY-MM-DD HH:mm:ss} {level: <7} {name} {message}</level>"
+)
 LOG_FORMAT_NO_COLOR = "{time:YYYY-MM-DD HH:mm:ss} {level: <7} {message}"
 
 
