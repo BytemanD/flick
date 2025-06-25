@@ -6,7 +6,6 @@ import sys
 from urllib import parse
 
 import flask
-import webview  # pylint: disable=import-error
 from flask_cors import CORS
 from loguru import logger
 
@@ -113,13 +112,20 @@ def set_pip_config():
     return {}
 
 
+@app.route("/docker/images")
+def get_images():
+    try:
+        return {"images": container.SERVICE.images()}
+    except Exception as e:
+        logger.error('interval server error: {}', str(e))
+        return {}, 500
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-d", "--debug", action="store_true", help="Enable debug")
     parser.add_argument("--dev", action="store_true", help="Enable development mode")
-    parser.add_argument(
-        "-w", "--webview", action="store_true", help="Enable webview mode"
-    )
+    parser.add_argument("-w", "--webview", action="store_true", help="Enable webview mode")
 
     args = parser.parse_args(sys.argv[1:])
 
@@ -128,17 +134,11 @@ def main():
     logger.info(f"template folder: {app.template_folder}")
 
     if args.webview:
-        logger.info("create webview window")
-        webview.create_window("Flick", app, http_port=5000, width=1480, height=1000)
-        logger.info("start webview")
-        webview.start(debug=False)
+        from flick.plugin import window             # type: ignore
+
+        window.create_and_start_window(app, debug=args.debug)
     else:
         app.run(debug=args.dev)
-
-
-@app.route("/docker/images")
-def get_images():
-    return {"images": container.SERVICE.images()}
 
 
 if __name__ == "__main__":

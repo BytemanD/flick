@@ -2,6 +2,11 @@ import dataclasses
 from typing import List, Optional
 
 import docker
+import docker.errors
+import requests.exceptions
+import urllib3.exceptions
+
+from . import exceptions
 
 
 @dataclasses.dataclass
@@ -15,7 +20,18 @@ class Image:
 class DockerManager:
 
     def __init__(self) -> None:
-        self.client = docker.from_env()
+        self._client = None
+
+    @property
+    def client(self) -> docker.DockerClient:
+        if self._client is None:
+            try:
+                self._client = docker.from_env()
+            except (docker.errors.DockerException,
+                    requests.exceptions.ConnectionError,
+                    urllib3.exceptions.ProtocolError) as e:
+                raise exceptions.CreateDockerClientFailed(str(e))
+        return self._client
 
     def images(self):
         images = self.client.images.list()

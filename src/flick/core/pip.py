@@ -69,19 +69,16 @@ class PythonManager:
     def list_packages(self, name=None) -> List[PyPackage]:
         logger.info("list packages with name={}", name)
 
-        def _get_metadata(dist):
-            try:
-                return dist.metadata.as_string()
-            except Exception as e:               # pylint: disable=broad-exception-caught
-                logger.error("get metadata string faield: {}", e)
-                return "查询失败"
-
+        def _get_metadata(dist) -> List[str]:
+            return [
+                f'{key.title()}: {value}' for key, value in dist.metadata.items()
+            ]
         return [
             PyPackage(
                 name=dist.metadata["Name"],
                 version=dist.metadata["Version"],
                 sumary=dist.metadata["Summary"],
-                metadata=_get_metadata(dist),
+                metadata='\n'.join(_get_metadata(dist)),
             )
             for dist in metadata.distributions()
             if (not name or dist.metadata["Name"] == name)
