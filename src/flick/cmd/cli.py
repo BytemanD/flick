@@ -12,13 +12,15 @@ from loguru import logger
 from flick.common import logging
 from flick.core import container, pip
 
-webdir = os.path.join(os.path.dirname(os.getcwd()), "flick-view", "dist")
 
+web_dir = os.path.join(os.path.dirname(os.getcwd()), "flick-view", "dist")
+if not os.path.exists(web_dir):
+    web_dir = os.path.join('/', 'usr', 'share', 'flick-view')
 
 app = flask.Flask(
     __name__,
-    static_folder=os.path.join(webdir, "assets"),
-    template_folder=webdir,
+    static_folder=os.path.join(web_dir, "assets"),
+    template_folder=web_dir,
     static_url_path="/assets",
 )
 CORS(app)
@@ -26,7 +28,7 @@ CORS(app)
 
 @app.route("/")
 def index():
-    index_html = os.path.join(webdir, "index.html")
+    index_html = os.path.join(web_dir, "index.html")
     if os.path.exists(index_html):
         return flask.render_template("index.html")
     return {"error": "Index HTML file not found"}, 404
@@ -132,6 +134,8 @@ def main():
     logging.setup_logger(level="DEBUG" if args.debug else "INFO")
 
     logger.info(f"template folder: {app.template_folder}")
+    if app.template_folder and not os.path.exists(app.template_folder):
+        logger.warning(f"template folder not exists")
 
     if args.webview:
         from flick.plugin import window             # type: ignore
