@@ -1,5 +1,4 @@
 import webview
-
 from loguru import logger
 
 

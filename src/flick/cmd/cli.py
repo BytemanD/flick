@@ -10,8 +10,7 @@ from flask_cors import CORS
 from loguru import logger
 
 from flick.common import logging
-from flick.core import container, pip
-
+from flick.core import container, node, pip
 
 web_dir = os.path.join(os.path.dirname(os.getcwd()), "flick-view", "dist")
 if not os.path.exists(web_dir):
@@ -123,6 +122,26 @@ def get_images():
         return {}, 500
 
 
+@app.route("/node/info")
+def get_system_info():
+    return {"info": node.SERVICE.platform()}
+
+
+
+@app.route("/node/cpu")
+def get_node_cpu():
+    return {"cpu": node.SERVICE.cpu()}
+
+@app.route("/node/memory")
+def get_node_memory():
+    return {"memory": node.SERVICE.memory()}
+
+
+@app.route("/node/disk")
+def get_node_disk():
+    return {"disk": node.SERVICE.disk()}
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-d", "--debug", action="store_true", help="Enable debug")
@@ -133,12 +152,13 @@ def main():
 
     logging.setup_logger(level="DEBUG" if args.debug else "INFO")
 
-    logger.info(f"template folder: {app.template_folder}")
+    logger.info("template folder: {}", app.template_folder)
     if app.template_folder and not os.path.exists(app.template_folder):
-        logger.warning(f"template folder not exists")
+        logger.warning("template folder not exists")
 
     if args.webview:
-        from flick.plugin import window             # type: ignore
+        from flick.plugin import \
+            window  # pylint: disable=import-outside-toplevel
 
         window.create_and_start_window(app, debug=args.debug)
     else:
