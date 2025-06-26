@@ -14,7 +14,7 @@ from flick.core import container, node, pip
 
 web_dir = os.path.join(os.path.dirname(os.getcwd()), "flick-view", "dist")
 if not os.path.exists(web_dir):
-    web_dir = os.path.join('/', 'usr', 'share', 'flick-view')
+    web_dir = os.path.join("/", "usr", "share", "flick-view")
 
 app = flask.Flask(
     __name__,
@@ -31,6 +31,11 @@ def index():
     if os.path.exists(index_html):
         return flask.render_template("index.html")
     return {"error": "Index HTML file not found"}, 404
+
+
+@app.route("/favicon.ico")
+def favicon_ico():
+    return flask.send_from_directory(web_dir, "favicon.ico", mimetype="image/vnd.microsoft.icon")
 
 
 @app.route("/pip/version")
@@ -118,7 +123,7 @@ def get_images():
     try:
         return {"images": container.SERVICE.images()}
     except Exception as e:
-        logger.error('interval server error: {}', str(e))
+        logger.error("interval server error: {}", str(e))
         return {}, 500
 
 
@@ -127,10 +132,10 @@ def get_system_info():
     return {"info": node.SERVICE.platform()}
 
 
-
 @app.route("/node/cpu")
 def get_node_cpu():
     return {"cpu": node.SERVICE.cpu()}
+
 
 @app.route("/node/memory")
 def get_node_memory():
@@ -157,8 +162,7 @@ def main():
         logger.warning("template folder not exists")
 
     if args.webview:
-        from flick.plugin import \
-            window  # pylint: disable=import-outside-toplevel
+        from flick.plugin import window  # pylint: disable=import-outside-toplevel
 
         window.create_and_start_window(app, debug=args.debug)
     else:
