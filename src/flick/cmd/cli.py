@@ -10,6 +10,7 @@ from flask_cors import CORS
 from loguru import logger
 
 from flick.common import logging
+from flick.common import utils
 from flick.core import container, node, pip
 
 web_dir = os.path.join(os.path.dirname(os.getcwd()), "flick-view", "dist")
@@ -142,9 +143,16 @@ def get_node_memory():
     return {"memory": node.SERVICE.memory()}
 
 
-@app.route("/node/disk")
+@app.route("/node/partitions")
 def get_node_disk():
-    return {"disk": node.SERVICE.disk()}
+    all_device = flask.request.args.get('all_device', default=False,
+                                        type=utils.strtobool)
+    return {"partitions": node.SERVICE.partitions(all_device=all_device)}
+
+
+@app.route("/node/net_interfaces")
+def get_node_net_interfaces():
+    return {"net_interfaces": node.SERVICE.net_interfaces()}
 
 
 def main():

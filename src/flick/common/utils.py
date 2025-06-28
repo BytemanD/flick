@@ -1,5 +1,6 @@
 import time
 from functools import lru_cache, wraps
+from distutils import util
 from typing import Optional
 
 
@@ -19,3 +20,9 @@ def timed_lru_cache(maxsize: Optional[int] = None, seconds: int = 3600):
         return wrapped_func
 
     return wrapper_cache
+
+
+def strtobool(value) -> bool:
+    if not value:
+        return False
+    return bool(util.strtobool(value))
