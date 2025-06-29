@@ -4,6 +4,8 @@ from flask_restful import Resource
 from flick.common import utils
 from flick.core import node
 
+from ._argparser import query_parser, ReqArg
+
 
 class Info(Resource):
 
@@ -24,9 +26,13 @@ class Memory(Resource):
 
 
 class Partitions(Resource):
+    query_parser = query_parser([
+        ReqArg("all_device", type=utils.strtobool),
+    ])  # fmt: skip
 
     def get(self):
-        all_device = flask.request.args.get("all_device", default=False, type=utils.strtobool)
+        args = self.query_parser.parse_args(flask.request)
+        all_device = args.get("all_device", False)
         return flask.jsonify({"partitions": node.SERVICE.partitions(all_device=all_device)})
 
 

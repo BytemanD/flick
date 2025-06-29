@@ -11,21 +11,19 @@ from loguru import logger
 from flick.common import logging
 from flick.router import base, docker, node, pip
 
-web_dir = os.path.join(os.path.dirname(os.getcwd()), "flick-view", "dist")
-if not os.path.exists(web_dir):
-    web_dir = os.path.join("/", "usr", "share", "flick-view")
-
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-d", "--debug", action="store_true", help="Enable debug")
     parser.add_argument("--dev", action="store_true", help="Enable development mode")
     parser.add_argument("-w", "--webview", action="store_true", help="Enable webview mode")
-
     args = parser.parse_args(sys.argv[1:])
 
     logging.setup_logger(level="DEBUG" if args.debug else "INFO")
 
+    web_dir = os.path.join(os.path.dirname(os.getcwd()), "flick-view", "dist")
+    if not os.path.exists(web_dir):
+        web_dir = os.path.join("/", "usr", "share", "flick-view")
     app = flask.Flask(
         __name__,
         static_folder=os.path.join(web_dir, "assets"),

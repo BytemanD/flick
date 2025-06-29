@@ -4,6 +4,7 @@ from flask_restful import Resource
 
 from flick.common import utils
 from flick.core import container
+from ._argparser import query_parser, ReqArg
 
 
 class System(Resource):
@@ -22,9 +23,13 @@ class Images(Resource):
 
 
 class Containers(Resource):
+    query_parser = query_parser([
+        ReqArg("all_status", type=utils.strtobool),
+    ])  # fmt: skip
 
     def get(self):
-        all_status = flask.request.args.get("all_status", default=False, type=utils.strtobool)
+        args = self.query_parser.parse_args(flask.request)
+        all_status = args.get("all_status", False)
         return jsonify({"containers": container.SERVICE.containers(all_status=all_status)})
 
 
@@ -32,6 +37,7 @@ class Volumes(Resource):
 
     def get(self):
         return jsonify({"volumes": container.SERVICE.volumes()})
+
 
 class Volume(Resource):
 

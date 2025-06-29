@@ -84,9 +84,6 @@ class NodeManager:
         如果 all_device=False, 仅物理设备
         """
         partitions = psutil.disk_partitions(all=all_device)
-        print(
-            partitions
-        )
         return [
             Disk(
                 device=part.device,
