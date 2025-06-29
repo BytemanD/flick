@@ -5,9 +5,11 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.9"
 dependencies = [
+    "distro>=1.9.0",
     "docker>=7.1.0",
     "flask>=3.1.1",
     "flask-cors>=6.0.1",
+    "flask-restful>=0.3.10",
     "loguru>=0.7.3",
     "pip>=21.3.1",
     "psutil>=7.0.0",

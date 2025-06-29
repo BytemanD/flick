@@ -1,7 +1,8 @@
 import dataclasses
-from typing import Dict, List, Optional
 import platform
+from typing import Dict, List, Optional
 
+import distro
 import psutil
 
 
@@ -36,13 +37,18 @@ class NetInterface:
 class NodeManager:
 
     def platform(self) -> dict:
-        return {
+        info = {
             "system": platform.system(),
             "release": platform.release(),
             "version": platform.version(),
             "machine": platform.machine(),
             "processor": platform.processor(),
         }
+        if platform.system().lower() == 'linux':
+            info['name'] = distro.name()
+            info['dist_version'] = distro.version()
+
+        return info
         # boot_time = psutil.boot_time()
         # info['boot_time'] = datetime.datetime.fromtimestamp(
         #        boot_time).strftime("%Y-%m-%d %H:%M:%S")
@@ -78,6 +84,9 @@ class NodeManager:
         如果 all_device=False, 仅物理设备
         """
         partitions = psutil.disk_partitions(all=all_device)
+        print(
+            partitions
+        )
         return [
             Disk(
                 device=part.device,
@@ -117,7 +126,7 @@ class NodeManager:
             net_ifs[interface].packets_sent = stats.packets_sent
             net_ifs[interface].packets_recv = stats.packets_recv
 
-        return [x for x in net_ifs.values()]
+        return list(net_ifs.values())
 
 
 SERVICE = NodeManager()

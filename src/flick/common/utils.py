@@ -1,6 +1,6 @@
 import time
-from functools import lru_cache, wraps
 from distutils import util
+from functools import lru_cache, wraps
 from typing import Optional
 
 

@@ -16,6 +16,8 @@ class Image:
     size: int
     id: Optional[str] = None
 
+    def __json__(self):
+        return dataclasses.asdict(self)
 
 class DockerManager:
 
@@ -32,6 +34,20 @@ class DockerManager:
                     urllib3.exceptions.ProtocolError) as e:
                 raise exceptions.CreateDockerClientFailed(str(e))
         return self._client
+
+    def system(self) -> dict:
+        info = self.client.info()
+        return {
+            'version': info['ServerVersion'],
+            'root_dir': info['DockerRootDir'],
+            'driver': info['Driver'],
+            'gpu_supported': bool(info.get('Runtimes', {}).get('nvidia')),
+            'containers_running': info['ContainersRunning'],
+            'containers_stopped': info['ContainersStopped'],
+            'containers_paursed': info['ContainersPaused'],
+            'images': info['Images'],
+            'containers': info['Containers'],
+        }
 
     def images(self):
         images = self.client.images.list()
