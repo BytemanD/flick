@@ -37,7 +37,10 @@ def list_containers():
     items = client.containers.list(all=True)
     print("========== 所有容器 ===========")
     for container in items:
-        print(f"ID: {container.short_id}, 名称: {container.name}, 状态: {container.status}")
+        print(f"ID: {container.short_id}")
+        print(f"名称: {container.name}")
+        print(f"状态: {container.status}")
+        print(f"镜像: {container.attrs['Config']['Image']}")
 
 
 def list_volumes():

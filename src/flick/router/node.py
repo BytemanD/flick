@@ -4,7 +4,7 @@ from flask_restful import Resource
 from flick.common import utils
 from flick.core import node
 
-from ._argparser import query_parser, ReqArg
+from ._argparser import ReqArg, query_parser
 
 
 class Info(Resource):

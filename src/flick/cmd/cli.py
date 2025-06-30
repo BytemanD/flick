@@ -58,6 +58,7 @@ def main():
     api.add_resource(docker.System, "/docker/system")
     api.add_resource(docker.Images, "/docker/images")
     api.add_resource(docker.Containers, "/docker/containers")
+    api.add_resource(docker.Container, "/docker/containers/<id_or_name>")
     api.add_resource(docker.Volumes, "/docker/volumes")
     api.add_resource(docker.Volume, "/docker/volumes/<name>")
 
