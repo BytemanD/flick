@@ -22,6 +22,9 @@ class Event:
         return dataclasses.asdict(self)
 
 
+def new_event(level, title, detail, item={}) -> Event:
+    return Event(level=level, title=title, detail=detail, item=item)
+
 class Channel:
 
     def __init__(self) -> None:
@@ -58,7 +61,7 @@ class SSEService:
         logger.debug("send event to session {}: {}", sid, event)
 
     def send_connected(self, sid):
-        self.send_event(sid, Event(level="success", title="connected", timestramp=time.time()))
+        self.send_event(sid, new_event("success", "connected", '', {}))
 
     def get_session_id(self):
         return session.get("id")
