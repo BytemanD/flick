@@ -3,7 +3,9 @@ from typing import Dict, List, Optional
 
 import docker
 import docker.errors
+from loguru import logger
 import requests.exceptions
+from retry import retry
 import urllib3.exceptions
 from docker.models import containers as docker_containers
 from docker.models import images as docker_images
@@ -18,6 +20,12 @@ class Container:
     name: str
     status: str
     image: str = ""
+
+    def is_running(self) -> bool:
+        return self.status in ["running", "active"]
+
+    def to_json(self):
+        return dataclasses.asdict(self)
 
     @classmethod
     def from_raw_object(cls, container: docker_containers.Container):
@@ -116,13 +124,20 @@ class DockerManager:
         container = self._get_container(id_or_name)
         container.remove(force=force)
 
-    def start_container(self, id_or_name: str):
+    def start_container(self, id_or_name: str, wait=False) -> Container:
         container = self._get_container(id_or_name)
+        logger.info("start container {}", id_or_name)
         container.start()
+        if not wait:
+            return Container.from_raw_object(container)
+        return self._wait_container_status(id_or_name, ["running", "active"])
 
-    def stop_container(self, id_or_name: str, timeout=None):
+    def stop_container(self, id_or_name: str, timeout=None, wait=False) -> Container:
         container = self._get_container(id_or_name)
         container.stop(timeout=timeout)
+        if not wait:
+            return Container.from_raw_object(container)
+        return self._wait_container_status(id_or_name, ["exited", "stopped"])
 
     def pause_container(self, id_or_name: str):
         container = self._get_container(id_or_name)
@@ -160,6 +175,14 @@ class DockerManager:
     def rm_volume(self, volume_id, force=False):
         volume = self.client.volumes.get(volume_id)
         volume.remove(force=force)
+
+    @retry(exceptions.ContainerStatusNotMatch, tries=60, delay=1)
+    def _wait_container_status(self, id_or_name, expect: List[str]) -> Container:
+        new_container = self.get_container(id_or_name)
+        logger.info("container {} status is {}", id_or_name, new_container.status)
+        if new_container.status in expect:
+            return new_container
+        raise exceptions.ContainerStatusNotMatch(id_or_name, new_container.status, expect)
 
 
 SERVICE = DockerManager()

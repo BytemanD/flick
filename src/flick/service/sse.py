@@ -6,14 +6,13 @@ import json
 import queue
 
 import flask
-from flask import session
 from loguru import logger
 
 
 @dataclasses.dataclass
 class Event:
-    level: str
-    title: str
+    name: str
+    level: str = "info"
     detail: str = ""
     item: dict = dataclasses.field(default_factory=dict)
     timestramp: float = 0
@@ -22,12 +21,14 @@ class Event:
         return dataclasses.asdict(self)
 
 
-def new_event(level, title, detail, item={}) -> Event:
-    return Event(level=level, title=title, detail=detail, item=item)
+def new_event(name, detail="", level="info", item=None) -> Event:
+    return Event(name=name, level=level, detail=detail, item=item or {})
+
 
 class Channel:
 
-    def __init__(self) -> None:
+    def __init__(self, session_id) -> None:
+        self.session_id = session_id
         self.events = queue.Queue()
 
     def event_stream(self):
@@ -47,43 +48,28 @@ class SSEService:
     def __init__(self) -> None:
         self.channels: Dict[str, Channel] = {}
 
-    def get_channel(self) -> Channel:
-        sid: str = session.get("id") or uuid.uuid4().hex
+    def _get_session_id(self) -> str:
+        if "id" not in flask.session:
+            raise RuntimeError("session id is none")
+        return flask.session.get("id", "")
 
-        if sid not in self.channels:
-            logger.info("new channel for session {}", sid)
-            self.channels[sid] = Channel()
-        self.send_connected(sid)
-        return self.channels[sid]
+    def get_channel(self, session_id) -> Channel:
+        if session_id not in self.channels:
+            logger.info("new channel with session_id {}", session_id)
+            self.channels[session_id] = Channel(session_id)
+        return self.channels[session_id]
 
-    def send_event(self, sid: str, event: Event):
-        self.channels[sid].put(event)
-        logger.debug("send event to session {}: {}", sid, event)
+    def send_event(self, event_name: str, level=None, detail=None, item=None):
+        event = Event(
+            name=event_name,
+            level=level or "info",
+            detail=detail or "",
+            item=item or {},
+        )
+        self.get_channel(self._get_session_id()).put(event)
 
-    def send_connected(self, sid):
-        self.send_event(sid, new_event("success", "connected", '', {}))
-
-    def get_session_id(self):
-        return session.get("id")
+    def send_connected_event(self):
+        self.send_event("sse connected", level="success")
 
 
 SSE_SERVICE = SSEService()
-
-
-def connect():
-    channel = SSE_SERVICE.get_channel()
-
-    def event_stream():
-        while True:
-            event = channel.get()
-            yield f"data: {json.dumps(event.to_json())}\n"
-
-    return flask.Response(
-        event_stream(),
-        mimetype="text/event-stream",
-        headers={
-            "Content-Type": "text/event-stream",
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-        },
-    )

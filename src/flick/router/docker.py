@@ -1,10 +1,13 @@
+import asyncio
 import flask
-from flask import jsonify
+from flask import jsonify, session
 from flask_restful import Resource, abort
+from loguru import logger
+from retry import retry
 
 from flick.common import utils
-from flick.core import container
-
+from flick.core import container, exceptions
+from flick.service import sse, task
 from ._argparser import ReqArg, query_parser
 
 
@@ -56,9 +59,9 @@ class Container(Resource):
         body = flask.request.get_json()
         status = body.get("status")
         if status in ["running", "acitve"]:
-            container.SERVICE.start_container(id_or_name)
+            task.start_task(self._start_container_and_wait, id_or_name)
         elif status in ["stop"]:
-            container.SERVICE.stop_container(id_or_name)
+            task.start_task(self._stop_container_and_wait, id_or_name)
         elif status in ["pause"]:
             container.SERVICE.pause_container(id_or_name)
         elif status in ["unpause"]:
@@ -66,6 +69,24 @@ class Container(Resource):
         else:
             abort(400, description=f"invalid status {status}")
         return {}
+
+    async def _start_container_and_wait(self, id_or_name: str):
+        updated = container.SERVICE.start_container(id_or_name, wait=True)
+        sse.SSE_SERVICE.send_event(
+            "started container",
+            level="success",
+            detail=id_or_name,
+            item=updated.to_json(),
+        )
+
+    async def _stop_container_and_wait(self, id_or_name: str):
+        updated = container.SERVICE.stop_container(id_or_name, wait=True)
+        sse.SSE_SERVICE.send_event(
+            "stopped container",
+            level="success",
+            detail=id_or_name,
+            item=updated.to_json(),
+        )
 
 
 class Volumes(Resource):
