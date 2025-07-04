@@ -1,16 +1,16 @@
 import logging
 import os
-import uuid
 
 import flask
+from cleo.commands.command import Command
+from cleo.helpers import option
 from flask_cors import CORS
 from flask_restful import Api
 from loguru import logger
-from cleo.commands.command import Command
-from cleo.helpers import option
 
 from flick.common import logging
-from flick.router import base, docker, node, pip, sse, auth
+from flick.router import auth, base, docker, node, pip, sse
+
 
 class ServeCommand(Command):
     name = "serve"
@@ -76,7 +76,8 @@ class ServeCommand(Command):
         api.add_resource(docker.Volume, "/docker/volumes/<name>")
 
         if self.option("webview"):
-            from flick.plugin import window  # pylint: disable=import-outside-toplevel
+            from flick.plugin import \
+                window  # pylint: disable=import-outside-toplevel
 
             window.create_and_start_window(
                 app, debug=self.option("debug"), http_port=self.option("host")

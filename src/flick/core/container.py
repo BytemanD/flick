@@ -3,13 +3,13 @@ from typing import Dict, List, Optional
 
 import docker
 import docker.errors
-from loguru import logger
 import requests.exceptions
-from retry import retry
 import urllib3.exceptions
 from docker.models import containers as docker_containers
 from docker.models import images as docker_images
 from docker.models import volumes as docker_volumes
+from loguru import logger
+from retry import retry
 
 from . import exceptions
 

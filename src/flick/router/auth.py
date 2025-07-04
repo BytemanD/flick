@@ -12,7 +12,6 @@ class Login(Resource):
         return {}
 
     def post(self):
-        # TODO
         flask.session["id"] = str(uuid.uuid4())
         flask.session["username"] = "guest"
         return flask.jsonify({"session_id": flask.session["id"]})
@@ -25,4 +24,3 @@ def check_auth():
         return
     if "username" not in flask.session or "id" not in flask.session:
         return {"error": "no auth"}, 403
-
