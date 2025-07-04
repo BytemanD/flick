@@ -6,6 +6,7 @@ from flask_restful import Resource
 from loguru import logger
 
 from flick.core import pip
+from flick.service import sse, task
 
 
 class Version(Resource):
@@ -29,12 +30,26 @@ class Packages(Resource):
         force = flask.request.json.get("force", False)
         if not name:
             return flask.jsonify({"success": False, "error": "name is required"}), 400
+
+        task.start_task(self._install_package, name, upgrade=upgrade, no_deps=no_deps, force=force)
+
+    async def _install_package(self, name, upgrade=False, no_deps=False, force=False):
         try:
-            pip.SERVICE.install(name, upgrade=upgrade, no_deps=no_deps, force=force)
-            return flask.jsonify({"success": True})
+            package = pip.SERVICE.install(name, upgrade=upgrade, no_deps=no_deps, force=force)
         except subprocess.CalledProcessError as e:
             logger.error(f"Failed to install package {name}: {e}")
-            return flask.jsonify({"success": False, "error": str(e)}), 500
+            sse.SSE_SERVICE.send_event(
+                "install package failed",
+                level="error",
+                detail=name,
+            )
+        else:
+            sse.SSE_SERVICE.send_event(
+                "installed package",
+                level="success",
+                detail=name,
+                item=package.to_json(),
+            )
 
 
 class Package(Resource):
