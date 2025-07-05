@@ -1,9 +1,11 @@
-import asyncio
+from concurrent import futures
 from typing import Callable
 
+from loguru import logger
 
-def start_task(task: Callable, *args, **kwargs):
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
+executor = futures.ThreadPoolExecutor()
 
-    loop.run_until_complete(task(*args, **kwargs))
+
+def submit(task: Callable, *args, **kwargs):
+    executor.submit(task, *args, **kwargs)
+    logger.info('submited task: {}', task)

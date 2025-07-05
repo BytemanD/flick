@@ -40,13 +40,22 @@ class Channel:
     def get(self) -> Event:
         return self.events.get()
 
+    def send_event(self, event_name: str, level=None, detail=None, item=None):
+        event = Event(
+            name=event_name,
+            level=level or "info",
+            detail=detail or "",
+            item=item or {},
+        )
+        self.put(event)
+
 
 class SSEService:
 
     def __init__(self) -> None:
         self.channels: Dict[str, Channel] = {}
 
-    def _get_session_id(self) -> str:
+    def get_session_id(self) -> str:
         if "id" not in flask.session:
             raise RuntimeError("session id is none")
         return flask.session.get("id", "")
@@ -57,17 +66,10 @@ class SSEService:
             self.channels[session_id] = Channel(session_id)
         return self.channels[session_id]
 
-    def send_event(self, event_name: str, level=None, detail=None, item=None):
-        event = Event(
-            name=event_name,
-            level=level or "info",
-            detail=detail or "",
-            item=item or {},
-        )
-        self.get_channel(self._get_session_id()).put(event)
-
     def send_connected_event(self):
-        self.send_event("sse connected", level="success")
+        self.get_channel(self.get_session_id()).send_event(
+            "sse connected", level="success"
+        )
 
 
 SSE_SERVICE = SSEService()

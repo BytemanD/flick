@@ -57,9 +57,11 @@ class Container(Resource):
         body = flask.request.get_json()
         status = body.get("status")
         if status in ["running", "acitve"]:
-            task.start_task(self._start_container_and_wait, id_or_name)
+            task.submit(
+                self._start_container_and_wait, sse.SSE_SERVICE.get_session_id(), id_or_name
+            )
         elif status in ["stop"]:
-            task.start_task(self._stop_container_and_wait, id_or_name)
+            task.submit(self._stop_container_and_wait, sse.SSE_SERVICE.get_session_id(), id_or_name)
         elif status in ["pause"]:
             container.SERVICE.pause_container(id_or_name)
         elif status in ["unpause"]:
@@ -68,18 +70,18 @@ class Container(Resource):
             abort(400, description=f"invalid status {status}")
         return {}
 
-    async def _start_container_and_wait(self, id_or_name: str):
+    def _start_container_and_wait(self, session_id, id_or_name: str):
         updated = container.SERVICE.start_container(id_or_name, wait=True)
-        sse.SSE_SERVICE.send_event(
+        sse.SSE_SERVICE.get_channel(session_id).send_event(
             "started container",
             level="success",
             detail=id_or_name,
             item=updated.to_json(),
         )
 
-    async def _stop_container_and_wait(self, id_or_name: str):
+    def _stop_container_and_wait(self, session_id, id_or_name: str):
         updated = container.SERVICE.stop_container(id_or_name, wait=True)
-        sse.SSE_SERVICE.send_event(
+        sse.SSE_SERVICE.get_channel(session_id).send_event(
             "stopped container",
             level="success",
             detail=id_or_name,

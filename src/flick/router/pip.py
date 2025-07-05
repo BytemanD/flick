@@ -31,20 +31,27 @@ class Packages(Resource):
         if not name:
             return flask.jsonify({"success": False, "error": "name is required"}), 400
 
-        task.start_task(self._install_package, name, upgrade=upgrade, no_deps=no_deps, force=force)
+        task.submit(
+            self._install_package,
+            sse.SSE_SERVICE.get_session_id(),
+            name,
+            upgrade=upgrade,
+            no_deps=no_deps,
+            force=force,
+        )
 
-    async def _install_package(self, name, upgrade=False, no_deps=False, force=False):
+    def _install_package(self, session_id, name, upgrade=False, no_deps=False, force=False):
         try:
             package = pip.SERVICE.install(name, upgrade=upgrade, no_deps=no_deps, force=force)
         except subprocess.CalledProcessError as e:
             logger.error(f"Failed to install package {name}: {e}")
-            sse.SSE_SERVICE.send_event(
+            sse.SSE_SERVICE.get_channel(session_id).send_event(
                 "install package failed",
                 level="error",
                 detail=name,
             )
         else:
-            sse.SSE_SERVICE.send_event(
+            sse.SSE_SERVICE.get_channel(session_id).send_event(
                 "installed package",
                 level="success",
                 detail=name,
@@ -55,12 +62,57 @@ class Packages(Resource):
 class Package(Resource):
 
     def delete(self, name):
+        task.submit(self._uninstall_package_and_wait, sse.SSE_SERVICE.get_session_id(), name)
+        return {}
+
+    def put(self, name):
+        version = flask.request.json.get("version")
+        no_deps = flask.request.json.get("noDeps")
+        force = flask.request.json.get("force")
+        if version:
+            task.submit(
+                self._update_package_and_wait,
+                sse.SSE_SERVICE.get_session_id(),
+                name,
+                version,
+                no_deps=no_deps,
+                force=force,
+            )
+
+    def _uninstall_package_and_wait(self, session_id, name):
         try:
             pip.SERVICE.uninstall(name)
-            return {}
         except subprocess.CalledProcessError as e:
             logger.error(f"Failed to uninstall package {name}: {e}")
-            return flask.jsonify({"error": str(e)}), 500
+            sse.SSE_SERVICE.get_channel(session_id).send_event(
+                "update package failed",
+                level="error",
+                detail=name,
+            )
+        else:
+            sse.SSE_SERVICE.get_channel(session_id).send_event(
+                "uninstalled package",
+                level="success",
+                detail=name,
+            )
+
+    def _update_package_and_wait(self, session_id, name, version, no_deps=False, force=False):
+        try:
+            package = pip.SERVICE.upgrade(name, version, no_deps=no_deps, force=force)
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Failed to install package {name}: {e}")
+            sse.SSE_SERVICE.get_channel(session_id).send_event(
+                "update package failed",
+                level="error",
+                detail=name,
+            )
+        else:
+            sse.SSE_SERVICE.get_channel(session_id).send_event(
+                "updated package",
+                level="success",
+                detail=name,
+                item=package.to_json(),
+            )
 
 
 class PackageVersion(Resource):

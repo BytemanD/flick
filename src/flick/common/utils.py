@@ -22,7 +22,7 @@ def timed_lru_cache(maxsize: Optional[int] = None, seconds: int = 3600):
     return wrapper_cache
 
 
-def strtobool(value) -> bool:
+def strtobool(value: str) -> bool:
     if not value:
         return False
     return bool(util.strtobool(value))

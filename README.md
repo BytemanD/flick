@@ -4,22 +4,43 @@
 
 ## 开发
 
-安装依赖
+安装虚拟环境
 
 ```bash
 uv sync
 ```
 
-启动web服务
+### 启动web服务
+
+powershell 执行
 
 ```bash
 $env:PYTHONPATH='src'
-uv run python -m flick.cmd.cli -d --dev
+```
+
+linux 执行
+
+```bash
+export PYTHONPATH=src
+```
+
+启动web服务
+
+```bash
+uv run python -m flick.cmd.cli serve -d --dev
 ```
 
 启动web服务+webview
 
 ```bash
 $env:PYTHONPATH='src'
-uv run python -m flick.cmd.cli -d --dev --webview
+uv run python -m flick.cmd.cli serve -d --dev --webview
 ```
+
+## 安装依赖
+
+> ubuntu
+```bash
+apt-get install -y python3-cleo python3-flask python3-flask-cors python3-flask-restful python3-httpx python3-requests python3-docker python3-retry python3-psutil python3-distro python3-webview
+```
+

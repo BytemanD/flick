@@ -1,7 +1,10 @@
+set -e
 
 # echo -e "\033[44;37m      bloack      \033[0m"
 # black src
 # echo
+
+find ./src -type f -name '*.py' |xargs dos2unix > /dev/null
 
 echo -e "\033[44;37m    autoflake     \033[0m"
 autoflake -ri --remove-all-unused-imports  src

@@ -2,7 +2,6 @@ import dataclasses
 from importlib import metadata
 from typing import List
 
-import requests
 from loguru import logger
 
 from flick.common.utils import timed_lru_cache
@@ -42,12 +41,6 @@ class PythonManager:
         values = output.strip().split()
         return values[1] if len(values) > 2 else ""
 
-    def last_version(self, name):
-        resp = requests.get(f"https://pypi.org/pypi/{name}/json", timeout=60 * 10)
-        resp.raise_for_status()
-        data = resp.json()
-        return data.get("info", {}).get("version")
-
     def install(self, name, upgrade=False, no_deps=False, force=False) -> PyPackage:
         args = ["install"]
         if upgrade:
@@ -59,6 +52,14 @@ class PythonManager:
         args.append(name)
         self.pip_cmd.execute(*args)
         return self.get_package(name=name.split("==")[0])
+
+    def upgrade(self, name, version, no_deps=False, force=False) -> PyPackage:
+        return self.install(
+            f'{name}=={version}',
+            upgrade=True,
+            no_deps=no_deps,
+            force=force
+        )
 
     def uninstall(self, name):
         self.pip_cmd.execute("uninstall", "-y", name)
