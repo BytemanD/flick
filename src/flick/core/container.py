@@ -20,6 +20,7 @@ class Container:
     name: str
     status: str
     image: str = ""
+    command: List[str] = dataclasses.field(default_factory=list)
 
     def is_running(self) -> bool:
         return self.status in ["running", "active"]
@@ -33,7 +34,8 @@ class Container:
             short_id=container.short_id,
             name=container.name or "",
             status=container.status or "",
-            image=container.attrs["Config"]["Image"],
+            image=container.attrs.get("Config", {}).get("Image", ""),
+            command=container.attrs.get("Config", {}).get("Cmd", []),
         )
 
 
@@ -154,6 +156,10 @@ class DockerManager:
     def images(self, show_intermediate=False):
         images = self.client.images.list(all=show_intermediate)
         return [Image.from_raw_object(image) for image in images]
+
+    def remove_image(self, id_or_tag: str, force=False):
+        logger.info("remove image {}", id_or_tag)
+        self.client.images.remove(id_or_tag, force=force)
 
     def prune_images(self):
         self.client.images.prune()

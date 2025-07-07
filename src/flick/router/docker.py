@@ -1,6 +1,8 @@
+import docker.errors
 import flask
 from flask import jsonify
 from flask_restful import Resource, abort
+from loguru import logger
 
 from flick.common import utils
 from flick.core import container
@@ -25,6 +27,42 @@ class Images(Resource):
 
     def delete(self):
         container.SERVICE.prune_images()
+        return {}, 204
+
+
+class Image(Resource):
+
+    def delete(self, image_id):
+        try:
+            container.SERVICE.remove_image(image_id, force=True)
+        except docker.errors.APIError as e:
+            logger.error('delete image {} failed: {}', image_id, e)
+            abort(400, description='delete falied')
+            return
+        return {}, 204
+
+
+class ImageAactions(Resource):
+
+    def post(self):
+        body = flask.request.get_json()
+        keys = list(body.keys())
+        if not keys:
+            abort(400, description="action is required")
+            return
+        action = keys[0]
+        if action in ["remove_tag", "removeTag"]:
+            # {
+            #     "removeTag": {
+            #         'tag': "xxxx"
+            #     }
+            # }
+            id_or_tag = body.get(action, {}).get("tag")
+            if not id_or_tag:
+                abort(400, description="tag is required")
+            container.SERVICE.remove_image(id_or_tag)
+        else:
+            abort(400, description=f"invalid action {action}")
         return {}, 204
 
 
