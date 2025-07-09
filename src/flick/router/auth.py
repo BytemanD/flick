@@ -17,10 +17,20 @@ class Login(Resource):
         return flask.jsonify({"session_id": flask.session["id"]})
 
 
+IGNORE_PATHS = {
+    "/auth/login": ["POST", "OPTIONS"],
+    "/sse": ["GET"],
+    "/index.html": ["GET"],
+    "/": ["GET"],
+}
+
+
 def check_auth():
-    if flask.request.path == "/auth/login" and flask.request.method in ["POST", "OPTIONS"]:
+    if flask.request.path.startswith('/assets'):
         return
-    if flask.request.method == "GET" and flask.request.path == "/sse":
+    if flask.request.path in IGNORE_PATHS and flask.request.method in IGNORE_PATHS.get(
+        flask.request.path
+    ):
         return
     if "username" not in flask.session or "id" not in flask.session:
         return {"error": "no auth"}, 403
