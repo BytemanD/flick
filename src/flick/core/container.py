@@ -161,6 +161,11 @@ class DockerManager:
         logger.info("remove image {}", id_or_tag)
         self.client.images.remove(id_or_tag, force=force)
 
+    def add_tag(self, image_id: str, tag: str):
+        logger.info("image {} add tag {}", image_id, tag)
+        image = self.client.images.get(image_id)
+        image.tag(image_id, tag)
+
     def prune_images(self):
         self.client.images.prune()
 

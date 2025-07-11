@@ -1,42 +1,35 @@
-import flask
-from flask_restful import Resource
+from flick.router import basehandler
 
 from flick.common import utils
 from flick.core import node
 
-from ._argparser import ReqArg, query_parser
 
-
-class Info(Resource):
+class Info(basehandler.BaseRequestHandler):
 
     def get(self):
-        return {"info": node.SERVICE.platform()}
+        self.finish({"info": node.SERVICE.platform()})
 
 
-class Cpu(Resource):
-
-    def get(self):
-        return {"cpu": node.SERVICE.cpu()}
-
-
-class Memory(Resource):
+class Cpu(basehandler.BaseRequestHandler):
 
     def get(self):
-        return {"memory": node.SERVICE.memory()}
+        self.finish({"cpu": node.SERVICE.cpu()})
 
 
-class Partitions(Resource):
-    query_parser = query_parser([
-        ReqArg("all_device", type=utils.strtobool),
-    ])  # fmt: skip
+class Memory(basehandler.BaseRequestHandler):
 
     def get(self):
-        args = self.query_parser.parse_args(flask.request)
-        all_device = args.get("all_device", False)
-        return flask.jsonify({"partitions": node.SERVICE.partitions(all_device=all_device)})
+        self.finish({"memory": node.SERVICE.memory()})
 
 
-class NetInterfaces(Resource):
+class Partitions(basehandler.BaseRequestHandler):
 
     def get(self):
-        return flask.jsonify({"net_interfaces": node.SERVICE.net_interfaces()})
+        all_device = utils.strtobool(self.get_query_argument("all_device", ''))
+        self.finish({"partitions": node.SERVICE.partitions(all_device=all_device)})
+
+
+class NetInterfaces(basehandler.BaseRequestHandler):
+
+    def get(self):
+        return self.finish({"net_interfaces": node.SERVICE.net_interfaces()})

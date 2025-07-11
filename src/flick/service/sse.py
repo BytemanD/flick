@@ -1,9 +1,8 @@
 import dataclasses
 import json
-import queue
 from typing import Dict
 
-import flask
+from tornado import queues
 from loguru import logger
 
 
@@ -27,7 +26,7 @@ class Channel:
 
     def __init__(self, session_id) -> None:
         self.session_id = session_id
-        self.events = queue.Queue()
+        self.events = queues.Queue()
 
     def event_stream(self):
         while True:
@@ -37,8 +36,11 @@ class Channel:
     def put(self, event: Event):
         self.events.put(event)
 
-    def get(self) -> Event:
-        return self.events.get()
+    async def get(self) -> Event:
+        return await self.events.get() # type: ignore
+
+    def empty(self) -> bool:
+        return self.events.empty()
 
     def send_event(self, event_name: str, level=None, detail=None, item=None):
         event = Event(
@@ -55,21 +57,14 @@ class SSEService:
     def __init__(self) -> None:
         self.channels: Dict[str, Channel] = {}
 
-    def get_session_id(self) -> str:
-        if "id" not in flask.session:
-            raise RuntimeError("session id is none")
-        return flask.session.get("id", "")
-
     def get_channel(self, session_id) -> Channel:
         if session_id not in self.channels:
             logger.info("new channel with session_id {}", session_id)
             self.channels[session_id] = Channel(session_id)
         return self.channels[session_id]
 
-    def send_connected_event(self):
-        self.get_channel(self.get_session_id()).send_event(
-            "sse connected", level="success"
-        )
+    def send_connected_event(self, session_id):
+        self.get_channel(session_id).send_event("sse connected", level="success")
 
 
 SSE_SERVICE = SSEService()

@@ -1,36 +1,31 @@
 import json
 
-import flask
-from flask_restful import Resource
 from loguru import logger
+import tornado
 
+from flick.router import basehandler
 from flick.service import sse
 
+class SSE(basehandler.BaseRequestHandler):
 
-class SSE(Resource):
-
-    def get(self):
-        session_id = flask.request.args.get('session_id')
+    async def get(self):
+        session_id = self.get_argument("session_id", "")
         if not session_id:
-            return {'error': 'channel_id is required'}, 403
+            self.finish_badrequest({"error": "channel_id is required"})
+            return
         channel = sse.SSE_SERVICE.get_channel(session_id)
-        sse.SSE_SERVICE.send_connected_event()
+
         logger.info("receive sse connection")
 
-        def event_stream():
-            while True:
-                event = channel.get()
-                logger.debug(
-                    "send event to channel {}: {}", channel.session_id, event.to_json()
-                )
-                yield f"data: {json.dumps(event.to_json())}\n\n"
+        self.set_header("Content-Type", "text/event-stream")
+        self.set_header("Cache-Control", "no-cache")
+        self.set_header("Connection", "keep-alive")
 
-        return flask.Response(
-            event_stream(),
-            mimetype="text/event-stream",
-            headers={
-                "Content-Type": "text/event-stream",
-                "Cache-Control": "no-cache",
-                "Connection": "keep-alive",
-            },
-        )
+        channel.send_event("sse connected", level="success")
+
+        while True:
+            event = await channel.get()
+            logger.debug("send event to channel {}: {}", channel.session_id, event.to_json())
+            message = f"data: {json.dumps(event.to_json())}\n\n"
+            self.write(message)
+            self.flush()

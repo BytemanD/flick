@@ -1,36 +1,22 @@
+import json
 import uuid
 
-import flask
-from flask_restful import Resource
+from tornado import web
+import jwt
 
 # from loguru import logger
+from flick.router import basehandler
+
+secret_key = "your-secret-key"
 
 
-class Login(Resource):
-
-    def options(self):
-        return {}
+class Login(basehandler.BaseRequestHandler):
 
     def post(self):
-        flask.session["id"] = str(uuid.uuid4())
-        flask.session["username"] = "guest"
-        return flask.jsonify({"session_id": flask.session["id"]})
+        payload = {
+            "id": str(uuid.uuid4()),
+        }
+        token = jwt.encode(payload, secret_key, algorithm="HS256")
 
-
-IGNORE_PATHS = {
-    "/auth/login": ["POST", "OPTIONS"],
-    "/sse": ["GET"],
-    "/index.html": ["GET"],
-    "/": ["GET"],
-}
-
-
-def check_auth():
-    if flask.request.path.startswith('/assets'):
-        return
-    if flask.request.path in IGNORE_PATHS and flask.request.method in IGNORE_PATHS.get(
-        flask.request.path
-    ):
-        return
-    if "username" not in flask.session or "id" not in flask.session:
-        return {"error": "no auth"}, 403
+        self.set_cookie('token', token)
+        self.finish({'session_id': payload.get('id', '')})

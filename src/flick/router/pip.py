@@ -1,39 +1,41 @@
+import json
 import subprocess
 from urllib import parse
 
-import flask
-from flask_restful import Resource
+import tornado
 from loguru import logger
 
+from flick.common import utils
 from flick.core import pip
+from flick.router import basehandler
 from flick.service import sse, task
 
 
-class Version(Resource):
+class Version(basehandler.BaseRequestHandler):
 
     def get(self):
-        return flask.jsonify({"version": pip.SERVICE.version()})
+        return self.finish({"version": pip.SERVICE.version()})
 
 
-class Packages(Resource):
+class Packages(basehandler.BaseRequestHandler):
 
     def get(self):
-        name = flask.request.args.get("name")
-        return flask.jsonify({"packages": pip.SERVICE.list_packages(name=name)})
+        name = self.get_query_argument("name", None)
+        self.finish({"packages": pip.SERVICE.list_packages(name=name)})
 
     def post(self):
-        if not flask.request.json:
-            return flask.jsonify({"error": "body is required"}), 400
-        name = flask.request.json.get("name")
-        no_deps = flask.request.json.get("noDeps", False)
-        upgrade = flask.request.json.get("upgrade", False)
-        force = flask.request.json.get("force", False)
+        data = self.get_body()
+        name = data.get("name")
+        no_deps = data.get("noDeps", False)
+        upgrade = data.get("upgrade", False)
+        force = data.get("force", False)
         if not name:
-            return flask.jsonify({"success": False, "error": "name is required"}), 400
+            self.finish_badrequest({"success": False, "error": "name is required"})
+            return
 
-        task.submit(
-            self._install_package,
-            sse.SSE_SERVICE.get_session_id(),
+        self.finish({})
+        self._install_package(
+            self.get_token_id(),
             name,
             upgrade=upgrade,
             no_deps=no_deps,
@@ -59,20 +61,21 @@ class Packages(Resource):
             )
 
 
-class Package(Resource):
+class Package(basehandler.BaseRequestHandler):
 
     def delete(self, name):
-        task.submit(self._uninstall_package_and_wait, sse.SSE_SERVICE.get_session_id(), name)
-        return {}
+        self.finish(status=204)
+        self._uninstall_package_and_wait(self.get_token_id(), name)
 
     def put(self, name):
-        version = flask.request.json.get("version")
-        no_deps = flask.request.json.get("noDeps")
-        force = flask.request.json.get("force")
+        data = self.get_body()
+        version = data.get("version")
+        no_deps = utils.strtobool(data.get("noDeps", ""))
+        force = utils.strtobool(data.get("force", ""))
+        self.finish({})
         if version:
-            task.submit(
-                self._update_package_and_wait,
-                sse.SSE_SERVICE.get_session_id(),
+            self._update_package_and_wait(
+                self.get_token_id(),
                 name,
                 version,
                 no_deps=no_deps,
@@ -115,35 +118,40 @@ class Package(Resource):
             )
 
 
-class PackageVersion(Resource):
+class PackageVersion(basehandler.BaseRequestHandler):
 
     def get(self, name):
         try:
-            return flask.jsonify({"versions": pip.SERVICE.get_package_versions(name)})
+            self.finish(
+                {"versions": pip.SERVICE.get_package_versions(name)}
+            )
         except subprocess.CalledProcessError as e:
             logger.error("Failed to get package version of {}: {}", name, e)
-            return {"error": str(e)}, 500
+            self.finish({"error": str(e)}, 500)
 
 
-class Repos(Resource):
-
-    def get(self):
-        return flask.jsonify({"repos": pip.PIP_REPOS})
-
-
-class Config(Resource):
+class Repos(basehandler.BaseRequestHandler):
 
     def get(self):
-        return flask.jsonify({"config": pip.SERVICE.config_list()})
+        self.finish({"repos": pip.PIP_REPOS})
+
+
+class Config(basehandler.BaseRequestHandler):
+
+    def get(self):
+        self.finish({"config": pip.SERVICE.config_list()})
 
     def put(self):
-        if not flask.request.json:
-            return flask.jsonify({"success": False, "error": "body is required"}), 400
+        data = self.get_body()
+        if not data :
+            self.finish_badrequest("body is required")
+            return
 
-        key = flask.request.json.get("key")
-        value = flask.request.json.get("value")
-        if not key or not key:
-            return flask.jsonify({"error": "key and value is required"}), 400
+        key = data.get("key")
+        value = data.get("value")
+        if not key or not value:
+            self.finish_badrequest("key and value is required")
+            return
 
         logger.debug("set pip config {} = {}", key, value)
         pip.SERVICE.config_set(key, value)
@@ -151,4 +159,4 @@ class Config(Resource):
             result = parse.urlparse(value)
             pip.SERVICE.config_set("global.trusted-host", result.hostname)
 
-        return {}
+        self.finish()

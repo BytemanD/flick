@@ -1,112 +1,119 @@
-import docker.errors
-import flask
-from flask import jsonify
-from flask_restful import Resource, abort
 from loguru import logger
+
+import docker.errors
 
 from flick.common import utils
 from flick.core import container
-from flick.service import sse, task
-
-from ._argparser import ReqArg, query_parser
-
-
-class System(Resource):
-
-    def get(self):
-        return {"system": container.SERVICE.system()}
+from flick.router import basehandler
+from flick.service import sse
+from flick.router.schemas import docker as docker_schema
 
 
-class Images(Resource):
+class System(basehandler.BaseRequestHandler):
 
     def get(self):
-        show_intermediate = flask.request.args.get(
-            "show_intermediate", default=False, type=utils.strtobool
-        )
-        return jsonify({"images": container.SERVICE.images(show_intermediate=show_intermediate)})
+        self.finish({"system": container.SERVICE.system()})
+
+
+class Images(basehandler.BaseRequestHandler):
+
+    def get(self):
+        show_intermediate = utils.strtobool(self.get_argument("show_intermediate", ""))
+        self.finish({"images": container.SERVICE.images(show_intermediate=show_intermediate)})
 
     def delete(self):
         container.SERVICE.prune_images()
-        return {}, 204
+        self.finish()
 
 
-class Image(Resource):
+class Image(basehandler.BaseRequestHandler):
 
     def delete(self, image_id):
         try:
             container.SERVICE.remove_image(image_id, force=True)
         except docker.errors.APIError as e:
-            logger.error('delete image {} failed: {}', image_id, e)
-            abort(400, description='delete falied')
-            return
-        return {}, 204
+            logger.error("delete image {} failed: {}", image_id, e)
+            self.finish_internalerror(str(e))
+
+        self.finish()
 
 
-class ImageAactions(Resource):
+class ImageActions(basehandler.BaseRequestHandler):
 
     def post(self):
-        body = flask.request.get_json()
+        body = self.get_body()
         keys = list(body.keys())
         if not keys:
-            abort(400, description="action is required")
+            self.finish_badrequest("action is required")
             return
         action = keys[0]
         if action in ["remove_tag", "removeTag"]:
-            # {
-            #     "removeTag": {
-            #         'tag': "xxxx"
-            #     }
-            # }
             id_or_tag = body.get(action, {}).get("tag")
             if not id_or_tag:
-                abort(400, description="tag is required")
+                self.finish_badrequest("tag is required")
+                return
             container.SERVICE.remove_image(id_or_tag)
-        else:
-            abort(400, description=f"invalid action {action}")
-        return {}, 204
+            self.finish()
+            return
+        if action in ["add_tag", "addTag"]:
+            image_id = body.get(action, {}).get("id")
+            tag = body.get(action, {}).get("tag")
+            if not image_id:
+                self.finish_badrequest("id is required")
+                return
+            if not tag:
+                self.finish_badrequest("tag is required")
+                return
+            container.SERVICE.add_tag(image_id, tag)
+            self.finish()
+            return
+        self.finish_badrequest(f"invalid action {action}")
 
 
-class Containers(Resource):
-    query_parser = query_parser([
-        ReqArg("all_status", type=utils.strtobool),
-    ])  # fmt: skip
+class ImageAddTag(basehandler.BaseRequestHandler):
+
+    def post(self, image_id):
+        body = self.validate_json_body(docker_schema.image_action_add_tag)
+        if not body:
+            return
+        image_id = body.get(body, {}).get("id")
+        tag = body.get(body, {}).get("tag")
+        container.SERVICE.add_tag(image_id, tag)
+        self.finish()
+
+
+class Containers(basehandler.BaseRequestHandler):
 
     def get(self):
-        args = self.query_parser.parse_args(flask.request)
-        all_status = args.get("all_status", False)
-        return jsonify({"containers": container.SERVICE.containers(all_status=all_status)})
+        all_status = utils.strtobool(self.get_argument("all_status", ""))
+        self.finish({"containers": container.SERVICE.containers(all_status=all_status)})
 
 
-class Container(Resource):
-    query_parser = query_parser([
-        ReqArg("all_status", type=utils.strtobool),
-    ])  # fmt: skip
-
-    def options(self, id_or_name):
-        return {}
+class Container(basehandler.BaseRequestHandler):
 
     def get(self, id_or_name):
-        return jsonify({"container": container.SERVICE.get_container(id_or_name)})
+        self.finish({"container": container.SERVICE.get_container(id_or_name)})
 
     def delete(self, id_or_name):
         container.SERVICE.rm_container(id_or_name)
 
     def put(self, id_or_name):
-        body = flask.request.get_json()
+        body = self.get_body()
         status = body.get("status")
         if status in ["running", "acitve"]:
-            task.submit(
-                self._start_container_and_wait, sse.SSE_SERVICE.get_session_id(), id_or_name
-            )
+            self.finish({"result": "accept"})
+            self._start_container_and_wait(self.get_token_id(), id_or_name)
         elif status in ["stop"]:
-            task.submit(self._stop_container_and_wait, sse.SSE_SERVICE.get_session_id(), id_or_name)
+            self.finish({"result": "accept"})
+            self._stop_container_and_wait(self.get_token_id(), id_or_name)
         elif status in ["pause"]:
             container.SERVICE.pause_container(id_or_name)
+            self.finish({"result": "accept"})
         elif status in ["unpause"]:
             container.SERVICE.unpause_container(id_or_name)
+            self.finish({"result": "accept"})
         else:
-            abort(400, description=f"invalid status {status}")
-        return {}
+            self.finish_badrequest(f"invalid status {status}")
 
     def _start_container_and_wait(self, session_id, id_or_name: str):
         updated = container.SERVICE.start_container(id_or_name, wait=True)
@@ -127,26 +134,27 @@ class Container(Resource):
         )
 
 
-class Volumes(Resource):
+class Volumes(basehandler.BaseRequestHandler):
 
     def get(self):
-        return jsonify({"volumes": container.SERVICE.volumes()})
+        self.finish({"volumes": container.SERVICE.volumes()})
 
     def post(self):
-        body = flask.request.get_json()
-        body.get("name")
-        return container.SERVICE.create_volume(
-            name=body.get("name"), driver=body.get("driver"), label=body.get("label")
+        body = self.get_body()
+        self.finish(
+            {
+                "volume": container.SERVICE.create_volume(
+                    name=body.get("name"), driver=body.get("driver"), label=body.get("label")
+                )
+            }
         )
 
 
-class Volume(Resource):
-
-    def options(self, name):
-        return {}
+class Volume(basehandler.BaseRequestHandler):
 
     def get(self, name):
-        return jsonify({"volume": container.SERVICE.get_volume(name)})
+        self.finish({"volume": container.SERVICE.get_volume(name)})
 
     def delete(self, name):
-        return container.SERVICE.rm_volume(name)
+        container.SERVICE.rm_volume(name)
+        self.finish()

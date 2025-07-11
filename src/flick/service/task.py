@@ -7,5 +7,5 @@ executor = futures.ThreadPoolExecutor()
 
 
 def submit(task: Callable, *args, **kwargs):
+    logger.info('submit task: {}', task)
     executor.submit(task, *args, **kwargs)
-    logger.info('submited task: {}', task)

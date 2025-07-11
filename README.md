@@ -41,6 +41,6 @@ uv run python -m flick.cmd.cli serve -d --dev --webview
 
 > ubuntu
 ```bash
-apt-get install -y python3-cleo python3-flask python3-flask-cors python3-flask-restful python3-httpx python3-requests python3-docker python3-retry python3-psutil python3-distro python3-webview
+apt-get install -y python3-cleo python3-tornado python3-httpx python3-requests python3-docker python3-retry python3-psutil python3-distro python3-webview
 ```
 

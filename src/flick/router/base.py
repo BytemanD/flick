@@ -1,18 +1,11 @@
-import flask
-from flask_restful import Resource
+import tornado
+from flick.router import basehandler
 
 STATIC_PATH = ""
 
 
-class Index(Resource):
+class Index(basehandler.BaseRequestHandler):
 
     def get(self):
-        return flask.send_from_directory(STATIC_PATH, "index.html", mimetype="text/html")
-
-
-class Logo(Resource):
-
-    def get(self):
-        return flask.send_from_directory(
-            STATIC_PATH, "favicon.ico", mimetype="image/vnd.microsoft.icon"
-        )
+        # import pdb; pdb.set_trace()
+        self.render("index.html")

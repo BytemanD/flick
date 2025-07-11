@@ -13,6 +13,8 @@ class DiskUsage:
     free: int
     percent: float
 
+    def to_dict(self):
+        return dataclasses.asdict(self)
 
 @dataclasses.dataclass
 class Disk:
@@ -22,6 +24,8 @@ class Disk:
     opts: str = ""
     usage: Optional[DiskUsage] = None
 
+    def to_dict(self):
+        return dataclasses.asdict(self)
 
 @dataclasses.dataclass
 class NetInterface:
@@ -33,6 +37,8 @@ class NetInterface:
     packets_sent: int = 0
     packets_recv: int = 0
 
+    def to_dict(self):
+        return dataclasses.asdict(self)
 
 class NodeManager:
 
