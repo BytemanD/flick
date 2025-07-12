@@ -4,10 +4,7 @@ import os
 from cleo.commands.command import Command
 from cleo.helpers import option
 from loguru import logger
-from tornado import web
-from tornado import httpserver
-from tornado import ioloop
-from tornado import autoreload
+from tornado import autoreload, httpserver, ioloop, web
 
 from flick.common import logging
 from flick.router import auth, base, docker, node, pip, sse
@@ -29,7 +26,7 @@ class ServeCommand(Command):
 
         web_dirs = [
             os.path.join(os.path.dirname(os.getcwd()), "flick-view", "dist"),
-            os.path.join(os.path.dirname("flick-view")),
+            os.path.join(os.path.abspath(os.getcwd()), "flick-view"),
             os.path.join("/", "usr", "share", "flick-view"),
         ]
         web_dir = ""
@@ -38,9 +35,10 @@ class ServeCommand(Command):
             if os.path.exists(find_dir):
                 web_dir = find_dir
                 break
-        logger.info("template folder: {}", web_dir)
-        if web_dir and not os.path.exists(web_dir):
-            logger.warning("template folder not exists")
+        if web_dir:
+            logger.success("found template folder: {}", web_dir)
+        else:
+            logger.warning("template folder not found")
         base.STATIC_PATH = web_dir
 
         handlers = [

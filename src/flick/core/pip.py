@@ -54,12 +54,7 @@ class PythonManager:
         return self.get_package(name=name.split("==")[0])
 
     def upgrade(self, name, version, no_deps=False, force=False) -> PyPackage:
-        return self.install(
-            f'{name}=={version}',
-            upgrade=True,
-            no_deps=no_deps,
-            force=force
-        )
+        return self.install(f"{name}=={version}", upgrade=True, no_deps=no_deps, force=force)
 
     def uninstall(self, name):
         self.pip_cmd.execute("uninstall", "-y", name)
@@ -96,7 +91,8 @@ class PythonManager:
                 sumary=dist.metadata.get("Summary", ""),
                 metadata="\n".join(self._get_metadata(dist)),
             )
-            for dist in dists if dist.metadata.get("Name")
+            for dist in dists
+            if dist.metadata.get("Name")
         ]
 
     @timed_lru_cache(seconds=3600)

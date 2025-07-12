@@ -1,7 +1,6 @@
-from flick.router import basehandler
-
 from flick.common import utils
 from flick.core import node
+from flick.router import basehandler
 
 
 class Info(basehandler.BaseRequestHandler):

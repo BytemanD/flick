@@ -1,13 +1,14 @@
-from loguru import logger
+from urllib import parse
 
 import docker.errors
-from urllib import parse
+import tornado
+from loguru import logger
 
 from flick.common import utils
 from flick.core import container
 from flick.router import basehandler
-from flick.service import sse
 from flick.router.schemas import docker as docker_schema
+from flick.service import sse, task
 
 
 class System(basehandler.BaseRequestHandler):
@@ -43,8 +44,7 @@ class Image(basehandler.BaseRequestHandler):
 class ImageTags(basehandler.BaseRequestHandler):
 
     def post(self, image_id):
-        """添加镜像Tag
-        """
+        """添加镜像Tag"""
         image_id = parse.unquote(image_id)
         body = self.validate_json_body(docker_schema.image_action_add_tag)
         if not body:
@@ -52,7 +52,7 @@ class ImageTags(basehandler.BaseRequestHandler):
         new_tag = body.get("tag", "").strip()
         values = new_tag.split(":")
         if len(values) > 2 or not values[0]:
-            self.finish_badrequest(f'invalid tag: {new_tag}')
+            self.finish_badrequest(f"invalid tag: {new_tag}")
             return
 
         container.SERVICE.add_image_tag(image_id, values[0], values[1] if len(values) == 2 else "")
@@ -62,8 +62,7 @@ class ImageTags(basehandler.BaseRequestHandler):
 class ImageTag(basehandler.BaseRequestHandler):
 
     def delete(self, image_id, tag):
-        """删除镜像Tag
-        """
+        """删除镜像Tag"""
         image = container.SERVICE.get_image(image_id)
         if tag not in image.tags:
             self.finish_badrequest(f"image has no tag '{tag}'")
@@ -81,6 +80,15 @@ class Containers(basehandler.BaseRequestHandler):
         all_status = utils.strtobool(self.get_argument("all_status", ""))
         self.finish({"containers": container.SERVICE.containers(all_status=all_status)})
 
+    def post(self):
+        body = self.get_body()
+        container.SERVICE.run_container(
+            body.get("image"), name=body.get("name"),
+            auto_remove=body.get("autoRemove", False),
+            command=body.get("command"),
+            detach=True,
+        )
+
 
 class Container(basehandler.BaseRequestHandler):
 
@@ -88,17 +96,60 @@ class Container(basehandler.BaseRequestHandler):
         self.finish({"container": container.SERVICE.get_container(id_or_name)})
 
     def delete(self, id_or_name):
-        container.SERVICE.rm_container(id_or_name)
+        force = utils.strtobool(self.get_argument("force", default="false"))
+        container.SERVICE.rm_container(id_or_name, force=force)
 
-    def put(self, id_or_name):
+    async def put(self, id_or_name):
         body = self.get_body()
         status = body.get("status")
         if status in ["running", "acitve"]:
-            self.finish({"result": "accept"})
-            self._start_container_and_wait(self.get_token_id(), id_or_name)
+            self.finish(status=202)
+            # task.submit(self._start_container_and_wait, self.get_token_id(), id_or_name)
+            try:
+                updated = await self._start_container_and_wait(id_or_name)
+            except Exception as e:
+                logger.error("start container {} failed: {}", id_or_name, e)
+                await self.send_event(
+                    "start container failed",
+                    level="error",
+                    detail=id_or_name,
+                )
+            else:
+                await self.send_event(
+                    "started container",
+                    level="success",
+                    detail=id_or_name,
+                    item=updated.to_json(),
+                )
+
         elif status in ["stop"]:
-            self.finish({"result": "accept"})
-            self._stop_container_and_wait(self.get_token_id(), id_or_name)
+            self.finish(status=202)
+            current = container.SERVICE.get_container(id_or_name)
+            try:
+                updated = await self._stop_container_and_wait(id_or_name)
+            except docker.errors.NotFound:
+                # container may be removed because attr: AutoRemove.
+                await self.send_event(
+                    "deleted container",
+                    level="success",
+                    detail=id_or_name,
+                    item=current.to_json(),
+                )
+            except Exception as e:
+                logger.error("stop container {} failed: {}", id_or_name, e)
+                await self.send_event(
+                    "stop container failed",
+                    level="error",
+                    detail=id_or_name,
+                )
+            else:
+                await self.send_event(
+                    "stopped container",
+                    level="success",
+                    detail=id_or_name,
+                    item=updated.to_json(),
+                )
+
         elif status in ["pause"]:
             container.SERVICE.pause_container(id_or_name)
             self.finish({"result": "accept"})
@@ -108,23 +159,17 @@ class Container(basehandler.BaseRequestHandler):
         else:
             self.finish_badrequest(f"invalid status {status}")
 
-    def _start_container_and_wait(self, session_id, id_or_name: str):
+    @tornado.concurrent.run_on_executor
+    def _start_container_and_wait(self, id_or_name: str):
         updated = container.SERVICE.start_container(id_or_name, wait=True)
-        sse.SSE_SERVICE.get_channel(session_id).send_event(
-            "started container",
-            level="success",
-            detail=id_or_name,
-            item=updated.to_json(),
-        )
+        logger.info("started container {}", id_or_name)
+        return updated
 
-    def _stop_container_and_wait(self, session_id, id_or_name: str):
+    @tornado.concurrent.run_on_executor
+    def _stop_container_and_wait(self, id_or_name: str):
         updated = container.SERVICE.stop_container(id_or_name, wait=True)
-        sse.SSE_SERVICE.get_channel(session_id).send_event(
-            "stopped container",
-            level="success",
-            detail=id_or_name,
-            item=updated.to_json(),
-        )
+        logger.info("stopped container {}", id_or_name)
+        return updated
 
 
 class Volumes(basehandler.BaseRequestHandler):

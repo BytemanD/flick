@@ -1,5 +1,5 @@
 import dataclasses
-from typing import Dict, List, Optional
+from typing import Dict, List, Literal, Optional
 
 import docker
 import docker.errors
@@ -21,6 +21,7 @@ class Container:
     status: str
     image: str = ""
     command: List[str] = dataclasses.field(default_factory=list)
+    autoRemove: Optional[bool] = None
 
     def is_running(self) -> bool:
         return self.status in ["running", "active"]
@@ -36,6 +37,7 @@ class Container:
             status=container.status or "",
             image=container.attrs.get("Config", {}).get("Image", ""),
             command=container.attrs.get("Config", {}).get("Cmd", []),
+            autoRemove=container.attrs.get("HostConfig", {}).get("AutoRemove", []),
         )
 
 
@@ -122,6 +124,22 @@ class DockerManager:
     def get_container(self, id_or_name: str):
         return Container.from_raw_object(self._get_container(id_or_name))
 
+    def run_container(
+        self,
+        image,
+        name=None,
+        command=None,
+        auto_remove=False,
+        detach: Literal[True] = True,
+    ):
+        self.client.containers.run(
+            image=image,
+            name=name,
+            command=command,
+            auto_remove=auto_remove,
+            detach=detach,
+        )
+
     def rm_container(self, id_or_name: str, force=False):
         container = self._get_container(id_or_name)
         container.remove(force=force)
@@ -165,10 +183,10 @@ class DockerManager:
         logger.info("remove image {}", id_or_tag)
         self.client.images.remove(id_or_tag, force=force)
 
-    def add_image_tag(self, image_id: str, repository: str, tag: Optional[str]=None) -> List[str]:
+    def add_image_tag(self, image_id: str, repository: str, tag: Optional[str] = None) -> List[str]:
         logger.info("image {} add tag: {}:{}", image_id, repository, tag)
         image = self.client.images.get(image_id)
-        image.tag(repository, tag or 'latest')
+        image.tag(repository, tag or "latest")
         return image.tags
 
     def prune_images(self):

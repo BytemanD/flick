@@ -1,18 +1,20 @@
-from functools import lru_cache
 import dataclasses
 import json
-import traceback
-from typing import List, Optional, Union
-from loguru import logger
-from tornado import gen
+from concurrent import futures
+from functools import lru_cache
+from typing import Optional, Union
 
+import jsonschema
 import jwt
 from tornado import web
-import jsonschema
 from tornado.concurrent import Future
+
+from flick.service import sse
 
 
 class BaseRequestHandler(web.RequestHandler):
+    executor = futures.ThreadPoolExecutor()
+
     auth_required = False
     auth_methods = ["GET", "POST", "PUT", "DELETE"]
 
@@ -52,14 +54,14 @@ class BaseRequestHandler(web.RequestHandler):
         pass
 
     @lru_cache()
-    def _get_token(self, token) -> dict:
+    def _decode_token(self, token) -> dict:
         if not token:
             return {}
         secret_key = "your-secret-key"
-        return jwt.decode(token,  key=secret_key, algorithms=["HS256"])
+        return jwt.decode(token, key=secret_key, algorithms=["HS256"])
 
     def get_token_id(self) -> str:
-        token = self._get_token(self.get_cookie("token", ""))
+        token = self._decode_token(self.get_cookie("token", ""))
         return token.get("id", "")
 
     def write(self, chunk: Union[str, bytes, dict]) -> None:
@@ -81,14 +83,19 @@ class BaseRequestHandler(web.RequestHandler):
             jsonschema.validate(self.get_body(), schema)
             return body
         except jsonschema.ValidationError as e:
-            self.finish_badrequest(f'invalid body: {str(e)}')
+            self.finish_badrequest(f"invalid body: {str(e)}")
             return None
+
+    async def send_event(self, event_name, level=None, detail=None, item=None):
+        await sse.SSE_SERVICE.get_channel(self.get_token_id()).send_event(
+            event_name, level=level, detail=detail, item=item
+        )
 
     # def write_error(self, status_code, **kwargs):
     #     self.set_header('Content-Type', 'application/json')
     #     if 'exc_info' in kwargs:
     #         logger.exception("unexcept error")
-            
+
     #         error = traceback.format_exception_only(*kwargs["exc_info"][:-1])[0]
     #         self.finish_internalerror(error.strip())
     #     else:

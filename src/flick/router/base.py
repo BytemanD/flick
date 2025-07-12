@@ -1,4 +1,3 @@
-import tornado
 from flick.router import basehandler
 
 STATIC_PATH = ""

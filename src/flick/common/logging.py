@@ -3,8 +3,10 @@ import sys
 from loguru import logger
 
 LOG_FORMAT_DEFAULT = (
-    "<level>{time:YYYY-MM-DD HH:mm:ss} {level: <7} [{extra[session]}] {name} " "{message}</level>"
+    "<level>{time:YYYY-MM-DD HH:mm:ss} {level: <7} [{extra[session]}] {name}:{line} | "
+    "{message}</level>"
 )
+
 
 def setup_logger(level="INFO", file=None, log_format=None):
     """Setup logging configuration."""
