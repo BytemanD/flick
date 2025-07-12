@@ -59,19 +59,20 @@ class ServeCommand(Command):
 
             (r"/pip/version", pip.Version),
             (r"/pip/packages", pip.Packages),
-            (r"/pip/packages/(.+)", pip.Package),
-            (r"/pip/packages/(.+)/versions", pip.PackageVersion),
+            (r"/pip/packages/([^/]+)/versions", pip.PackageVersion),
+            (r"/pip/packages/([^/]+)", pip.Package),
             (r"/pip/repos", pip.Repos),
             (r"/pip/config", pip.Config),
 
             (r"/docker/system", docker.System),
             (r"/docker/images", docker.Images),
-            (r"/docker/images/<image_id>", docker.Image),
-            (r"/docker/images/actions", docker.ImageActions),
+            (r"/docker/images/([^/]+)", docker.Image),
+            (r"/docker/images/([^/]+)/tags/(.+)", docker.ImageTag),
+            (r"/docker/images/([^/]+)/tags", docker.ImageTags),
             (r"/docker/containers", docker.Containers),
-            (r"/docker/containers/(.+)", docker.Container),
+            (r"/docker/containers/([^/]+)", docker.Container),
             (r"/docker/volumes", docker.Volumes),
-            (r"/docker/volumes/(.+)", docker.Volume),
+            (r"/docker/volumes/([^/]+)", docker.Volume),
 
             (r"/assets/(.*)", web.StaticFileHandler, {"path": os.path.join(web_dir, 'assets')}),
         ]

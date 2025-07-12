@@ -1,7 +1,9 @@
 from functools import lru_cache
 import dataclasses
 import json
+import traceback
 from typing import List, Optional, Union
+from loguru import logger
 from tornado import gen
 
 import jwt
@@ -33,7 +35,7 @@ class BaseRequestHandler(web.RequestHandler):
     ) -> Future[None]:
         if status:
             self.set_status(status, reason=reason)
-        elif chunk is None:
+        elif chunk is None and not self._status_code:
             self.set_status(204)
         return super().finish(chunk)
 
@@ -81,3 +83,13 @@ class BaseRequestHandler(web.RequestHandler):
         except jsonschema.ValidationError as e:
             self.finish_badrequest(f'invalid body: {str(e)}')
             return None
+
+    # def write_error(self, status_code, **kwargs):
+    #     self.set_header('Content-Type', 'application/json')
+    #     if 'exc_info' in kwargs:
+    #         logger.exception("unexcept error")
+            
+    #         error = traceback.format_exception_only(*kwargs["exc_info"][:-1])[0]
+    #         self.finish_internalerror(error.strip())
+    #     else:
+    #         super().write_error(status_code, **kwargs)

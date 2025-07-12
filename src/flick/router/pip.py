@@ -8,7 +8,7 @@ from loguru import logger
 from flick.common import utils
 from flick.core import pip
 from flick.router import basehandler
-from flick.service import sse, task
+from flick.service import sse
 
 
 class Version(basehandler.BaseRequestHandler):
@@ -122,9 +122,7 @@ class PackageVersion(basehandler.BaseRequestHandler):
 
     def get(self, name):
         try:
-            self.finish(
-                {"versions": pip.SERVICE.get_package_versions(name)}
-            )
+            self.finish({"versions": pip.SERVICE.get_package_versions(name)})
         except subprocess.CalledProcessError as e:
             logger.error("Failed to get package version of {}: {}", name, e)
             self.finish({"error": str(e)}, 500)
@@ -143,7 +141,7 @@ class Config(basehandler.BaseRequestHandler):
 
     def put(self):
         data = self.get_body()
-        if not data :
+        if not data:
             self.finish_badrequest("body is required")
             return
 

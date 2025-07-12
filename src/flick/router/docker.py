@@ -1,6 +1,7 @@
 from loguru import logger
 
 import docker.errors
+from urllib import parse
 
 from flick.common import utils
 from flick.core import container
@@ -29,8 +30,9 @@ class Images(basehandler.BaseRequestHandler):
 class Image(basehandler.BaseRequestHandler):
 
     def delete(self, image_id):
+        force = utils.strtobool(self.get_argument("force", default="false"))
         try:
-            container.SERVICE.remove_image(image_id, force=True)
+            container.SERVICE.remove_image(image_id, force=force)
         except docker.errors.APIError as e:
             logger.error("delete image {} failed: {}", image_id, e)
             self.finish_internalerror(str(e))
@@ -38,48 +40,39 @@ class Image(basehandler.BaseRequestHandler):
         self.finish()
 
 
-class ImageActions(basehandler.BaseRequestHandler):
-
-    def post(self):
-        body = self.get_body()
-        keys = list(body.keys())
-        if not keys:
-            self.finish_badrequest("action is required")
-            return
-        action = keys[0]
-        if action in ["remove_tag", "removeTag"]:
-            id_or_tag = body.get(action, {}).get("tag")
-            if not id_or_tag:
-                self.finish_badrequest("tag is required")
-                return
-            container.SERVICE.remove_image(id_or_tag)
-            self.finish()
-            return
-        if action in ["add_tag", "addTag"]:
-            image_id = body.get(action, {}).get("id")
-            tag = body.get(action, {}).get("tag")
-            if not image_id:
-                self.finish_badrequest("id is required")
-                return
-            if not tag:
-                self.finish_badrequest("tag is required")
-                return
-            container.SERVICE.add_tag(image_id, tag)
-            self.finish()
-            return
-        self.finish_badrequest(f"invalid action {action}")
-
-
-class ImageAddTag(basehandler.BaseRequestHandler):
+class ImageTags(basehandler.BaseRequestHandler):
 
     def post(self, image_id):
+        """添加镜像Tag
+        """
+        image_id = parse.unquote(image_id)
         body = self.validate_json_body(docker_schema.image_action_add_tag)
         if not body:
             return
-        image_id = body.get(body, {}).get("id")
-        tag = body.get(body, {}).get("tag")
-        container.SERVICE.add_tag(image_id, tag)
-        self.finish()
+        new_tag = body.get("tag", "").strip()
+        values = new_tag.split(":")
+        if len(values) > 2 or not values[0]:
+            self.finish_badrequest(f'invalid tag: {new_tag}')
+            return
+
+        container.SERVICE.add_image_tag(image_id, values[0], values[1] if len(values) == 2 else "")
+        self.finish({"image": container.SERVICE.get_image(image_id)})
+
+
+class ImageTag(basehandler.BaseRequestHandler):
+
+    def delete(self, image_id, tag):
+        """删除镜像Tag
+        """
+        image = container.SERVICE.get_image(image_id)
+        if tag not in image.tags:
+            self.finish_badrequest(f"image has no tag '{tag}'")
+            return
+        container.SERVICE.remove_image(tag)
+        if len(image.tags) <= 1:
+            self.finish()
+        else:
+            self.finish({"image": container.SERVICE.get_image(image_id)})
 
 
 class Containers(basehandler.BaseRequestHandler):

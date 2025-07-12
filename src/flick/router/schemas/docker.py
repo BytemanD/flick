@@ -1,8 +1,7 @@
 image_action_add_tag = {
     "type": "object",
     "properties": {
-        "id": {"type": "string"},
-        "tag": {"type": "string"},
+        "tag": {"type": "string", "minLength": 1},
     },
-    "required": ["id", "tag"]
+    "required": ["tag"]
 }

@@ -153,18 +153,23 @@ class DockerManager:
         container = self._get_container(id_or_name)
         container.resize(height, width)
 
-    def images(self, show_intermediate=False):
+    def images(self, show_intermediate=False) -> List[Image]:
         images = self.client.images.list(all=show_intermediate)
         return [Image.from_raw_object(image) for image in images]
+
+    def get_image(self, image_id) -> Image:
+        image = self.client.images.get(image_id)
+        return Image.from_raw_object(image)
 
     def remove_image(self, id_or_tag: str, force=False):
         logger.info("remove image {}", id_or_tag)
         self.client.images.remove(id_or_tag, force=force)
 
-    def add_tag(self, image_id: str, tag: str):
-        logger.info("image {} add tag {}", image_id, tag)
+    def add_image_tag(self, image_id: str, repository: str, tag: Optional[str]=None) -> List[str]:
+        logger.info("image {} add tag: {}:{}", image_id, repository, tag)
         image = self.client.images.get(image_id)
-        image.tag(image_id, tag)
+        image.tag(repository, tag or 'latest')
+        return image.tags
 
     def prune_images(self):
         self.client.images.prune()
