@@ -8,7 +8,6 @@ from flick.common import utils
 from flick.core import container
 from flick.router import basehandler
 from flick.router.schemas import docker as docker_schema
-from flick.service import sse, task
 
 
 class System(basehandler.BaseRequestHandler):

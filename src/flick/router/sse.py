@@ -1,8 +1,7 @@
 import json
-from typing import Dict
 
-from loguru import logger
 import tornado
+from loguru import logger
 
 from flick.router import basehandler
 from flick.service import sse

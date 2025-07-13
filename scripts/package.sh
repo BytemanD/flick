@@ -1,12 +1,11 @@
 # rm -rf dist/flick-view
 set -e
 
-
-# echo "====== 构建前端 ======="
-# cd ../flick-view
-# npm install
-# npm run build
-# cd -
+echo "====== 构建前端 ======="
+cd ../flick-view
+npm install
+npm run build
+cd -
 
 echo "====== 构建后端 ======="
 uv build

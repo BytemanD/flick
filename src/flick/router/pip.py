@@ -1,13 +1,11 @@
 import subprocess
 from urllib import parse
 
-from loguru import logger
 import tornado
+from loguru import logger
 
-from flick.common import utils
 from flick.core import pip
 from flick.router import basehandler
-from flick.service import sse, task
 
 
 class Version(basehandler.BaseRequestHandler):

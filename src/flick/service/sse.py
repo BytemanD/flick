@@ -1,6 +1,7 @@
+import asyncio
 import dataclasses
 from typing import Dict
-import asyncio
+
 from loguru import logger
 
 
