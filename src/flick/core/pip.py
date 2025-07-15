@@ -83,16 +83,16 @@ class PythonManager:
         logger.info("list packages with name={}", name)
         dists = metadata.distributions()
         if name:
-            dists = [dist for dist in dists if dist.metadata.get("Name", "") == name]
+            dists = [dist for dist in dists if dist.name == name]
         return [
             PyPackage(
-                name=dist.metadata.get("Name", ""),
-                version=dist.metadata.get("Version", ""),
-                sumary=dist.metadata.get("Summary", ""),
+                name=dist.name,
+                version=dist.version,
+                sumary=dist.metadata["Summary"],
                 metadata="\n".join(self._get_metadata(dist)),
             )
             for dist in dists
-            if dist.metadata.get("Name")
+            if dist.name
         ]
 
     @timed_lru_cache(seconds=3600)

@@ -154,6 +154,7 @@ class DockerManager:
 
     def stop_container(self, id_or_name: str, timeout=None, wait=False) -> Container:
         container = self._get_container(id_or_name)
+        logger.info("stop container {}", id_or_name)
         container.stop(timeout=timeout)
         if not wait:
             return Container.from_raw_object(container)

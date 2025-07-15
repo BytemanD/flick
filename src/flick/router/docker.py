@@ -1,10 +1,9 @@
 from urllib import parse
 
 import docker.errors
-import tornado
 from loguru import logger
 
-from flick.common import utils
+from flick.common import context, utils
 from flick.core import container
 from flick.router import basehandler
 from flick.router.schemas import docker as docker_schema
@@ -158,13 +157,13 @@ class Container(basehandler.BaseRequestHandler):
         else:
             self.finish_badrequest(f"invalid status {status}")
 
-    @tornado.concurrent.run_on_executor
+    @context.preserve_context_and_run_on_executor
     def _start_container_and_wait(self, id_or_name: str):
         updated = container.SERVICE.start_container(id_or_name, wait=True)
         logger.info("started container {}", id_or_name)
         return updated
 
-    @tornado.concurrent.run_on_executor
+    @context.preserve_context_and_run_on_executor
     def _stop_container_and_wait(self, id_or_name: str):
         updated = container.SERVICE.stop_container(id_or_name, wait=True)
         logger.info("stopped container {}", id_or_name)

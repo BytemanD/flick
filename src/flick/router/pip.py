@@ -1,9 +1,9 @@
 import subprocess
 from urllib import parse
 
-import tornado
 from loguru import logger
 
+from flick.common import context
 from flick.core import pip
 from flick.router import basehandler
 
@@ -16,9 +16,14 @@ class Version(basehandler.BaseRequestHandler):
 
 class Packages(basehandler.BaseRequestHandler):
 
-    def get(self):
+    async def get(self):
         name = self.get_query_argument("name", None)
-        self.finish({"packages": pip.SERVICE.list_packages(name=name)})
+        packages = await self.list_packages(name=name)
+        self.finish({"packages": packages})
+
+    @context.preserve_context_and_run_on_executor
+    def list_packages(self, name=None):
+        return pip.SERVICE.list_packages(name=name)
 
     async def post(self):
         data = self.get_body()
@@ -53,7 +58,7 @@ class Packages(basehandler.BaseRequestHandler):
                 item=package.to_json(),
             )
 
-    @tornado.concurrent.run_on_executor
+    @context.preserve_context_and_run_on_executor
     async def _install_package(self, name, upgrade=False, no_deps=False, force=False):
         return pip.SERVICE.install(name, upgrade=upgrade, no_deps=no_deps, force=force)
 
@@ -112,11 +117,11 @@ class Package(basehandler.BaseRequestHandler):
                 )
         self.finish({}, status=202)
 
-    @tornado.concurrent.run_on_executor
+    @context.preserve_context_and_run_on_executor
     def _uninstall_package_and_wait(self, name):
         pip.SERVICE.uninstall(name)
 
-    @tornado.concurrent.run_on_executor
+    @context.preserve_context_and_run_on_executor
     def _update_package_and_wait(self, name, version, no_deps=False, force=False):
         return pip.SERVICE.upgrade(name, version, no_deps=no_deps, force=force)
 
