@@ -1,4 +1,7 @@
 import os
+import pathlib
+import platform
+import sys
 
 from cleo.commands.command import Command
 from cleo.helpers import option
@@ -25,11 +28,29 @@ class ServeCommand(Command):
         if self.option("debug"):
             log.monkey_patch_logging()
 
-        web_dirs = [
-            os.path.join(os.path.dirname(os.getcwd()), "flick-view", "dist"),
-            os.path.join(os.path.abspath(os.getcwd()), "flick-view"),
-            os.path.join("/", "usr", "share", "flick-view"),
-        ]
+        if hasattr(sys, "_MEIPASS"):
+            # 打包后的运行环境
+            web_dirs = [pathlib.Path(getattr(sys, "_MEIPASS"), 'flick-view')]
+        else:
+            web_dirs = [
+                # os.path.join(os.path.dirname(os.getcwd()), "flick-view", "dist"),
+                # os.path.join(os.path.abspath(os.getcwd()), "flick-view"),
+                # os.path.join("/", "usr", "share", "flick-view"),
+                pathlib.Path(os.getcwd()) / "flick-view",
+                pathlib.Path(os.getcwd()).parent / "flick-view" / "dist",
+            ]
+            if platform.system().lower() == "linux":
+                web_dirs.append(
+                    pathlib.Path("/", "usr", "share", "flick-view"),
+                )
+            elif platform.system().lower() == "windows":
+                app_data = os.getenv("PROGRAMDATA") or os.getenv("APPDATA")
+                if app_data:
+                    web_dirs.append(pathlib.Path(app_data, "flick-view"))
+
+        logger.debug(
+            "find web directories on these paths:\n{}", "\n".join([p.as_posix() for p in web_dirs])
+        )
         web_dir = ""
         for find_dir in web_dirs:
             logger.debug("find template folder: {}", find_dir)

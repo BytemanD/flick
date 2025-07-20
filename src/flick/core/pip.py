@@ -23,6 +23,7 @@ class PyPackage:
     sumary: str = ""
     # metadata: dict = dataclasses.field(default_factory=dict)
     metadata: str = ""
+    path: str = ""
 
     def __str__(self) -> str:
         return f"<{self.name}:{self.version}>"
@@ -90,6 +91,7 @@ class PythonManager:
                 version=dist.version,
                 sumary=dist.metadata["Summary"],
                 metadata="\n".join(self._get_metadata(dist)),
+                path=str(dist.locate_file(""))
             )
             for dist in dists
             if dist.name

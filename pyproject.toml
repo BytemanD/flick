@@ -28,6 +28,7 @@ dev = [
     "black>=25.1.0",
     "isort>=6.0.1",
     "prettytable>=3.16.0",
+    "pyinstaller>=6.14.2",
     "pylint>=3.3.7",
 ]
 
@@ -57,3 +58,7 @@ torch = { index = "tsinghua" }
 [[tool.uv.index]]
 name = "tsinghua"
 url = "https://pypi.tuna.tsinghua.edu.cn/simple"
+
+
+# [tool.uv.build-backend]
+# data = { headers= "include/headers"}

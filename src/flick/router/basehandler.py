@@ -56,6 +56,8 @@ class BaseRequestHandler(web.RequestHandler):
             self.set_status(status, reason=reason)
         elif chunk is None and not self._status_code:
             self.set_status(204)
+        if isinstance(chunk, (dict, list)):
+            self.set_header('content-type', 'application/json')# noqa: E702
         return super().finish(chunk)
 
     def finish_noauth(self):

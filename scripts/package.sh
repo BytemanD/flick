@@ -1,8 +1,11 @@
 # rm -rf dist/flick-view
 set -e
 
+FRONT_DIR=$1
+
 echo "====== 构建前端 ======="
-cd ../flick-view
+cd ${FRONT_DIR:-"../flick-view"}
+echo "前端目录: $(pwd)"
 npm install
 npm run build
 cd -

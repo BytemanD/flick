@@ -19,6 +19,7 @@ class Packages(basehandler.BaseRequestHandler):
     async def get(self):
         name = self.get_query_argument("name", None)
         packages = await self.list_packages(name=name)
+        logger.debug("list packages: {}", len(packages))
         self.finish({"packages": packages})
 
     @context.preserve_context_and_run_on_executor
