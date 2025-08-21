@@ -9,7 +9,7 @@ from loguru import logger
 from tornado import autoreload, httpserver, ioloop, web
 
 from flick.common import log
-from flick.router import auth, base, docker, node, pip, sse
+from flick.router import auth, base, docker, node, pip, sse, webrequest
 
 
 class ServeCommand(Command):
@@ -90,6 +90,8 @@ class ServeCommand(Command):
             (r"/docker/containers/([^/]+)", docker.Container),
             (r"/docker/volumes", docker.Volumes),
             (r"/docker/volumes/([^/]+)", docker.Volume),
+            (r"/webrequest/requests", webrequest.Requests),
+            (r"/webrequest/requests/([0-9]+)", webrequest.Request),
             (r"/assets/(.*)", web.StaticFileHandler, {"path": os.path.join(web_dir, "assets")}),
         ]
         app = web.Application(

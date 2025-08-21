@@ -1,5 +1,6 @@
+import os
+import pathlib
 import time
-from distutils import util
 from functools import lru_cache, wraps
 from typing import Optional
 
@@ -25,4 +26,12 @@ def timed_lru_cache(maxsize: Optional[int] = None, seconds: int = 3600):
 def strtobool(value: str) -> bool:
     if not value:
         return False
-    return bool(util.strtobool(value))
+    return value.lower() in ("true", "1", "yes", "on")
+
+
+def data_path(app_name: str) -> pathlib.Path:
+    """获取数据目录下的文件路径"""
+    appdir = os.getenv("APPDIR")
+    if not appdir:
+        appdir = "/usr/share"
+    return pathlib.Path(appdir, app_name)
